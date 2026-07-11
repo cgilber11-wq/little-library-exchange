@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 36" shape-rendering="crispEdges" role="img" aria-label="Casey's porch library pixel art">
+  <rect width="48" height="36" fill="#f5d5b8"/>
+  <rect x="0" y="29" width="48" height="7" fill="#c4956a"/>
+  <rect x="0" y="0" width="48" height="12" fill="#e8c4a0" opacity="0.5"/>
+  <rect x="4" y="20" width="8" height="10" fill="#a67c52"/>
+  <rect x="36" y="20" width="8" height="10" fill="#a67c52"/>
+  <rect x="6" y="18" width="4" height="2" fill="#8b5e34"/>
+  <rect x="38" y="18" width="4" height="2" fill="#8b5e34"/>
+  <rect x="14" y="15" width="20" height="11" fill="#c47840"/>
+  <rect x="12" y="13" width="24" height="3" fill="#9c4f2d"/>
+  <rect x="16" y="17" width="16" height="7" fill="#fff8f0"/>
+  <rect x="17" y="18" width="2" height="5" fill="#4d7c61"/>
+  <rect x="20" y="18" width="2" height="5" fill="#6c9fce"/>
+  <rect x="23" y="18" width="2" height="5" fill="#bd6235"/>
+  <rect x="26" y="18" width="2" height="5" fill="#4d7c61"/>
+  <rect x="29" y="18" width="2" height="5" fill="#9c4f2d"/>
+  <rect x="20" y="8" width="8" height="2" fill="#d27842"/>
+  <rect x="10" y="24" width="3" height="3" fill="#e8a060"/>
+  <rect x="35" y="24" width="3" height="3" fill="#e8a060"/>
+</svg>

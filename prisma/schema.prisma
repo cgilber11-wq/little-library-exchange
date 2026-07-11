@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String?
+  score         Int       @default(0)
+  /// Days a claim stays open to finish pickup (from request). After this, the claim expires and the book is available again.
+  bookCheckoutDays Int    @default(14)
+  /// After someone picks up your book, suggested days to return it or pass it on (shown on completed claims).
+  bookReturnDays   Int    @default(30)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  location      Location?
+  userBooks     UserBook[]
+  claimsMade    Claim[]   @relation("Claimer")
+  claimsReceived Claim[]  @relation("Owner")
+
+  originalBookCopies BookCopy[]        @relation("OriginalOwner")
+  shareEventsFrom    BookShareEvent[]  @relation("ShareEventsFrom")
+  shareEventsTo      BookShareEvent[]  @relation("ShareEventsTo")
+  bookWishRequests   BookWishRequest[]
+  wishResponses      BookWishRequest[]  @relation("WishRequestResponder")
+}
+
+model Location {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label       String?  // e.g. "My little library - 123 Oak St"
+  lat         Float?
+  lng         Float?
+  address     String?
+  /// When the member last confirmed what is physically in their little library.
+  libraryLastVerifiedAt DateTime?
+  /// URL slug for the public QR library page (/library/{publicSlug}).
+  publicSlug            String?  @unique
+  /// When false, /library/{publicSlug} returns not found.
+  publicPageEnabled     Boolean  @default(true)
+  /// Show collection (not on shelf) books on the public page for neighbors to reserve.
+  shareCollectionOnPublicPage Boolean @default(true)
+  /// Public photo of the little library box (path under /uploads/... or external URL).
+  photoUrl      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Book {
+  id          String     @id @default(cuid())
+  isbn        String?    @unique
+  title       String
+  author      String?
+  coverUrl    String?
+  createdAt   DateTime   @default(now())
+
+  userBooks   UserBook[]
+  bookCopies  BookCopy[]
+}
+
+/// One physical copy tracked through the app; originalOwner is who first listed it.
+model BookCopy {
+  id               String   @id @default(cuid())
+  bookId           String
+  book             Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  originalOwnerId  String
+  originalOwner    User     @relation("OriginalOwner", fields: [originalOwnerId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+
+  userBooks        UserBook[]
+  shareEvents      BookShareEvent[]
+}
+
+/// Each completed handoff (pickup) for a copy; chain shows how the book traveled from the original owner.
+model BookShareEvent {
+  id          String   @id @default(cuid())
+  bookCopyId  String
+  bookCopy    BookCopy @relation(fields: [bookCopyId], references: [id], onDelete: Cascade)
+  fromUserId  String
+  fromUser    User     @relation("ShareEventsFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId    String
+  toUser      User     @relation("ShareEventsTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  claimId     String?  @unique
+  claim       Claim?   @relation(fields: [claimId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([bookCopyId, createdAt])
+}
+
+model UserBook {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId        String
+  book          Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  status        String   @default("available") // available | claimed | gone | removed
+  locationType  String   @default("my_library") // my_library | collection
+  dropLat       Float?
+  dropLng       Float?
+  dropLabel     String?
+  /// When this copy was placed on the member’s little library shelf (locationType my_library).
+  libraryPlacedAt DateTime?
+  bookCopyId    String?
+  bookCopy      BookCopy? @relation(fields: [bookCopyId], references: [id], onDelete: SetNull)
+  /// Set when user marks the book as no longer in their collection (not used for gone / exchanged).
+  removedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  claim         Claim?
+  wishFulfilled BookWishRequest? @relation("WishListingMatch")
+}
+
+/// A member’s public “looking for this book” entry (max 5 open per user). Others can offer a listing via “I have that!”.
+model BookWishRequest {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title             String
+  author            String?
+  note              String?
+  /// open | matched | cancelled
+  status            String    @default("open")
+  matchedUserBookId String?   @unique
+  matchedUserBook   UserBook? @relation("WishListingMatch", fields: [matchedUserBookId], references: [id], onDelete: SetNull)
+  matchedAt         DateTime?
+  responderId       String?
+  responder         User?     @relation("WishRequestResponder", fields: [responderId], references: [id], onDelete: SetNull)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+model Claim {
+  id            String   @id @default(cuid())
+  userBookId    String   @unique
+  userBook      UserBook @relation(fields: [userBookId], references: [id], onDelete: Cascade)
+  claimerId     String
+  claimer       User     @relation("Claimer", fields: [claimerId], references: [id], onDelete: Cascade)
+  ownerId       String
+  owner         User     @relation("Owner", fields: [ownerId], references: [id], onDelete: Cascade)
+  status        String   @default("pending") // pending | book_placed | completed | expired
+  /// When the claim must be completed (picked up) by; set from owner’s bookCheckoutDays at claim time.
+  expiresAt     DateTime?
+  /// Suggested return-by date for the borrower; set from owner’s bookReturnDays when pickup is completed.
+  returnBy      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bookShareEvent BookShareEvent?
+}
