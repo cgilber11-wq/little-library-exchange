@@ -61,10 +61,6 @@ A web app for sharing books through little free libraries: manage your inventory
 
    Open [http://localhost:3000](http://localhost:3000).
 
-## Go live
-
-See **[GO_LIVE.md](./GO_LIVE.md)** for the production checklist (Vercel + Neon + Blob + soft launch).
-
 ## Next steps (product)
 
 - **Notifications** – Email when someone reserves your book or marks it placed.
